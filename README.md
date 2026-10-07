@@ -1,5 +1,7 @@
 # HealthPulse: Health Insurance Analytics
 
+[![Project checks](https://github.com/emilyxue003/health_insurance_analytics/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/emilyxue003/health_insurance_analytics/actions/workflows/ci.yml)
+
 **[Open the live demo](https://healthpulse-analytics.netlify.app/)** · [SQL case studies](frontend/public/sql/README.md) · [Database setup](database/README.md) · [Performance evidence](docs/performance.md)
 
 A MySQL analytics project exploring health insurance premiums, population health, and claim spending using synthetic data for **5 million members**. The full database contains **32.4 million records across eight related tables**. A React dashboard makes the analyses inspectable through charts, SQL downloads, result exports, and query plans.

@@ -31,11 +31,6 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Repair portable dependency lockfile
-        run: |
-          NPM_CONFIG_PACKAGE_LOCK_ONLY=true NPM_CONFIG_IGNORE_SCRIPTS=true npm install
-          python -c 'from pathlib import Path; import base64; s=base64.b64encode(Path("package-lock.json").read_bytes()).decode(); print("LOCK_START"); print("\n".join(s[i:i+1000] for i in range(0,len(s),1000))); print("LOCK_END")'
-        working-directory: frontend
       - run: npm ci
         working-directory: frontend
       - run: npm run lint
