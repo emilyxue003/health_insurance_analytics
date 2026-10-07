@@ -2,13 +2,21 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 import models
-from database import SessionLocal, engine
-from typing import List
-
-# Create the database tables in MySQL if they don't exist
-models.Base.metadata.create_all(bind=engine)
+from database import SessionLocal
+from fastapi.middleware.cors import CORSMiddleware
+from explorer import router as explorer_router, cached_endpoint
+from dashboard_queries import claims_trend_statement, members_by_state_statement
 
 app = FastAPI(title="HealthPulse Analytics API")
+app.include_router(explorer_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"], # Allow your React app
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Dependency to get a DB session for each request
 def get_db():
@@ -34,6 +42,7 @@ def get_member(member_id: int, db: Session = Depends(get_db)):
 # --- ANALYTICS ENDPOINTS (For Dashboard Charts) ---
 
 @app.get("/api/stats/summary")
+@cached_endpoint('summary')
 def get_summary_stats(db: Session = Depends(get_db)):
     """Returns high-level KPIs for the dashboard header cards."""
     total_members = db.query(models.Member).count()
@@ -51,21 +60,17 @@ def get_summary_stats(db: Session = Depends(get_db)):
     }
 
 @app.get("/api/stats/claims-trend")
+@cached_endpoint('claims-trend')
 def get_claims_trend(db: Session = Depends(get_db)):
     """Returns monthly claim totals for a line chart."""
-    results = db.query(
-        func.date_format(models.Claim.date, '%Y-%m').label('month'),
-        func.sum(models.Claim.amount).label('total')
-    ).group_by('month').order_by('month').all()
+    results = db.execute(claims_trend_statement(models.Claim.__table__)).all()
     
     return [{"month": r.month, "total": float(r.total)} for r in results]
 
 @app.get("/api/stats/members-by-state")
+@cached_endpoint('members-by-state')
 def get_members_by_state(db: Session = Depends(get_db)):
     """Returns member counts by state for a geographic map or bar chart."""
-    results = db.query(
-        models.Member.State, 
-        func.count(models.Member.member_id).label('count')
-    ).group_by(models.Member.State).all()
+    results = db.execute(members_by_state_statement(models.Member.__table__)).all()
     
-    return [{"state": r.State, "count": r.count} for r in results]
+    return [{"state": r.state, "count": r.count} for r in results]

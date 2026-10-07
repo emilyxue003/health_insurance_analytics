@@ -1,0 +1,202 @@
+{
+  "question": "Do premiums differ by state within the same plan and coverage tier?",
+  "source": "Full synthetic source CSVs",
+  "scope": "full",
+  "total_members": 5000000,
+  "parameters": {
+    "as_of": "2025-11-30",
+    "claims_start": "2024-11-01",
+    "claims_end": "2025-12-01",
+    "minimum_peers": 2
+  },
+  "grain": "Enrollment",
+  "execution_engine": "SQLite 3.51.2",
+  "mysql_verified": true,
+  "mysql_verification": {
+    "measured_at": "2026-10-06T15:46:47.767224+00:00",
+    "mysql_version": "8.0.45",
+    "report_sha256": "b5268076d614cb06d8c4cd5bf847c38549c6c4f218ae9f1315413be656815ba0",
+    "scope": "All three SELECT result checksums match the saved full-source results. Original generation engine and date are preserved.",
+    "queries": {
+      "regional_premiums": {
+        "measured_at": "2026-10-06T16:48:02.511035+00:00",
+        "sql_sha256": "73e9e3eff21f3460fe6d10640c613feec2cb9c4652c96c6ad780a0eaad7ea676",
+        "result_sha256": "79ff78302f5ea5a8d1da49a7dfaf951cd5a8969507d3cbe5ff10558b32bcc8c2",
+        "report": "benchmarks/mysql-optimization.json"
+      },
+      "housing_premiums": {
+        "measured_at": "2026-10-06T15:46:47.767224+00:00",
+        "sql_sha256": "e5dcfc371b964c67cfcaef3d02487f8b6df959e749292b2eb386b395e170265e",
+        "result_sha256": "764b4ea516558182178ce4ae324b01923b0087efda68200493e400a159e4bf19",
+        "report": "benchmarks/mysql-performance.json"
+      },
+      "conditions_costs": {
+        "measured_at": "2026-10-06T17:28:13.216599+00:00",
+        "sql_sha256": "0e3eeb54402179e0be52f0dc87398a31f8bd8af89e4ced37a802755776190aa6",
+        "result_sha256": "603ba63a6d9d8f1c11836da187e54d5f7d37045e5b5b68e1f8f31d8f4f52d2fb",
+        "report": "benchmarks/mysql-covering-index-applied.json"
+      }
+    }
+  },
+  "generated_at": "2026-10-06T04:17:15.563808+00:00",
+  "state_minimum_count": 50000,
+  "sql_sha256": "73e9e3eff21f3460fe6d10640c613feec2cb9c4652c96c6ad780a0eaad7ea676",
+  "methods_document": "https://healthpulse-analytics.netlify.app/sql/README.md",
+  "caveat": "Synthetic descriptive comparison. Premium billing frequency is undocumented. This is not an income, affordability, causal fairness, or discrimination estimate.",
+  "rows": [
+    {
+      "state": "NY",
+      "enrollments": 186173,
+      "average_premium": 1786.61,
+      "premium_index": 122.23,
+      "index_rank": 1
+    },
+    {
+      "state": "MA",
+      "enrollments": 66703,
+      "average_premium": 1744.72,
+      "premium_index": 119.23,
+      "index_rank": 2
+    },
+    {
+      "state": "CA",
+      "enrollments": 370700,
+      "average_premium": 1605.41,
+      "premium_index": 109.88,
+      "index_rank": 6
+    },
+    {
+      "state": "CO",
+      "enrollments": 55397,
+      "average_premium": 1516.48,
+      "premium_index": 103.5,
+      "index_rank": 7
+    },
+    {
+      "state": "MN",
+      "enrollments": 53846,
+      "average_premium": 1506.15,
+      "premium_index": 103.4,
+      "index_rank": 8
+    },
+    {
+      "state": "AZ",
+      "enrollments": 69327,
+      "average_premium": 1481.23,
+      "premium_index": 101.67,
+      "index_rank": 11
+    },
+    {
+      "state": "IN",
+      "enrollments": 65072,
+      "average_premium": 1476.55,
+      "premium_index": 101.13,
+      "index_rank": 13
+    },
+    {
+      "state": "VA",
+      "enrollments": 82064,
+      "average_premium": 1478.42,
+      "premium_index": 101.1,
+      "index_rank": 14
+    },
+    {
+      "state": "MO",
+      "enrollments": 58429,
+      "average_premium": 1473.22,
+      "premium_index": 100.55,
+      "index_rank": 15
+    },
+    {
+      "state": "NJ",
+      "enrollments": 87834,
+      "average_premium": 1453.25,
+      "premium_index": 99.47,
+      "index_rank": 18
+    },
+    {
+      "state": "TX",
+      "enrollments": 284456,
+      "average_premium": 1452.61,
+      "premium_index": 99.38,
+      "index_rank": 19
+    },
+    {
+      "state": "WI",
+      "enrollments": 55431,
+      "average_premium": 1451.67,
+      "premium_index": 99.34,
+      "index_rank": 20
+    },
+    {
+      "state": "IL",
+      "enrollments": 118695,
+      "average_premium": 1443.84,
+      "premium_index": 98.72,
+      "index_rank": 22
+    },
+    {
+      "state": "MD",
+      "enrollments": 58789,
+      "average_premium": 1444.8,
+      "premium_index": 98.6,
+      "index_rank": 23
+    },
+    {
+      "state": "OH",
+      "enrollments": 110808,
+      "average_premium": 1408.19,
+      "premium_index": 96.29,
+      "index_rank": 24
+    },
+    {
+      "state": "PA",
+      "enrollments": 123460,
+      "average_premium": 1409.31,
+      "premium_index": 96.21,
+      "index_rank": 25
+    },
+    {
+      "state": "GA",
+      "enrollments": 102915,
+      "average_premium": 1398.86,
+      "premium_index": 95.9,
+      "index_rank": 28
+    },
+    {
+      "state": "WA",
+      "enrollments": 73768,
+      "average_premium": 1384.07,
+      "premium_index": 95.03,
+      "index_rank": 31
+    },
+    {
+      "state": "MI",
+      "enrollments": 95145,
+      "average_premium": 1382.27,
+      "premium_index": 94.65,
+      "index_rank": 32
+    },
+    {
+      "state": "NC",
+      "enrollments": 101492,
+      "average_premium": 1371.75,
+      "premium_index": 93.98,
+      "index_rank": 33
+    },
+    {
+      "state": "FL",
+      "enrollments": 210298,
+      "average_premium": 1334.88,
+      "premium_index": 91.28,
+      "index_rank": 41
+    },
+    {
+      "state": "TN",
+      "enrollments": 66960,
+      "average_premium": 1275.53,
+      "premium_index": 87.13,
+      "index_rank": 45
+    }
+  ]
+}

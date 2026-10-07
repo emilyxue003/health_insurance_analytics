@@ -1,0 +1,4 @@
+export default function DatabaseSchema({ schema, counts, sample }) {
+  const number = (value) => value == null ? 'Unavailable' : new Intl.NumberFormat('en-US').format(value)
+  return <div className="schema-wrap"><table className="schema-table"><thead><tr><th>Table</th>{counts && <th>Full records</th>}{sample && <th>Demo records</th>}<th>Primary key</th><th>Relationships</th></tr></thead><tbody>{schema.map((table) => <tr key={table.name}><td>{table.name}</td>{counts && <td>{number(counts[table.name])}</td>}{sample && <td>{number(sample[table.name]?.length)}</td>}<td>{table.primary_key.join(', ')}</td><td>{table.foreign_keys.length ? table.foreign_keys.map((key) => <div key={key.column}>{key.column} → {key.table}.{key.target_column}</div>) : 'Reference table'}</td></tr>)}</tbody></table></div>
+}

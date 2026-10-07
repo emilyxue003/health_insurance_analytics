@@ -1,0 +1,46 @@
+{
+  "measured_at": "2026-10-06T17:28:13.216599+00:00",
+  "mysql_version": "8.0.45",
+  "table_counts": {
+    "MEMBERS": 5000000,
+    "CLAIMS": 13179693,
+    "ENROLLMENT": 4499910,
+    "FACILITY": 10000,
+    "CONDITION": 60,
+    "INSURANCE": 8,
+    "PLAN": 40,
+    "MEMBER_CONDITION": 9710863
+  },
+  "parameters": {
+    "as_of": "2025-11-30",
+    "claims_start": "2024-11-01",
+    "claims_end": "2025-12-01",
+    "minimum_peers": 2
+  },
+  "connection": "local",
+  "index_name": "ix_claims_member_date_amount_hp",
+  "index_columns": [
+    "member_id",
+    "date",
+    "amount"
+  ],
+  "previously_visible": false,
+  "applied": true,
+  "repeats": 3,
+  "query": "conditions_costs",
+  "sql": "WITH conditions_per_member AS (\n    SELECT Member_ID, COUNT(DISTINCT Condition_ID) AS condition_count\n    FROM MEMBER_CONDITION\n    WHERE Diagnostic_date <= :as_of\n    GROUP BY Member_ID\n), claims_per_member AS (\n    SELECT member_id, COUNT(*) AS claim_count, SUM(amount) AS claim_amount\n    FROM CLAIMS\n    WHERE date >= :claims_start AND date < :claims_end\n    GROUP BY member_id\n), member_costs AS (\n    SELECT m.member_id, e.premium,\n           COALESCE(d.condition_count, 0) AS condition_count,\n           COALESCE(c.claim_count, 0) AS claim_count,\n           COALESCE(c.claim_amount, 0) AS claim_amount\n    FROM MEMBERS m\n    JOIN ENROLLMENT e ON e.Enrollment_ID = m.Enrollment_ID\n    LEFT JOIN conditions_per_member d ON d.Member_ID = m.member_id\n    LEFT JOIN claims_per_member c ON c.member_id = m.member_id\n    WHERE e.start_date <= :as_of\n      AND (e.end_date IS NULL OR e.end_date >= :as_of)\n      AND e.premium IS NOT NULL AND e.premium >= 0\n)\nSELECT CASE WHEN condition_count = 0 THEN '0'\n            WHEN condition_count = 1 THEN '1'\n            WHEN condition_count = 2 THEN '2' ELSE '3+' END AS conditions,\n       COUNT(*) AS members,\n       SUM(CASE WHEN claim_count > 0 THEN 1 ELSE 0 END) AS members_with_claims,\n       SUM(claim_count) AS claims,\n       ROUND(SUM(claim_amount), 2) AS total_claim_amount,\n       ROUND(AVG(claim_amount), 2) AS average_claim_amount,\n       ROUND(AVG(premium), 2) AS average_premium\nFROM member_costs\nGROUP BY CASE WHEN condition_count = 0 THEN '0'\n              WHEN condition_count = 1 THEN '1'\n              WHEN condition_count = 2 THEN '2' ELSE '3+' END\nORDER BY MIN(condition_count);\n",
+  "sql_sha256": "0e3eeb54402179e0be52f0dc87398a31f8bd8af89e4ced37a802755776190aa6",
+  "plan": "-> Sort: `min(coalesce(d.condition_count,0))`  (actual time=20955..20955 rows=4 loops=1)\n    -> Table scan on <temporary>  (actual time=20955..20955 rows=4 loops=1)\n        -> Aggregate using temporary table  (actual time=20955..20955 rows=4 loops=1)\n            -> Nested loop left join  (cost=98e+15 rows=980e+15) (actual time=10015..19403 rows=3.15e+6 loops=1)\n                -> Nested loop left join  (cost=68.9e+9 rows=689e+9) (actual time=5485..11561 rows=3.15e+6 loops=1)\n                    -> Nested loop inner join  (cost=660697 rows=209043) (actual time=1.62..3161 rows=3.15e+6 loops=1)\n                        -> Filter: ((e.start_date <= DATE'2025-11-30') and ((e.end_date is null) or (e.end_date >= DATE'2025-11-30')) and (e.premium >= 0.00))  (cost=455215 rows=194275) (actual time=1.12..924 rows=3.15e+6 loops=1)\n                            -> Table scan on e  (cost=455215 rows=4.37e+6) (actual time=1.12..636 rows=4.5e+6 loops=1)\n                        -> Covering index lookup on m using ix_members_enrollment (Enrollment_ID=e.Enrollment_ID)  (cost=0.95 rows=1.08) (actual time=527e-6..637e-6 rows=1 loops=3.15e+6)\n                    -> Index lookup on d using <auto_key0> (Member_ID=m.member_id)  (cost=1.72e+6..1.72e+6 rows=10) (actual time=0.00254..0.0026 rows=0.632 loops=3.15e+6)\n                        -> Materialize CTE conditions_per_member  (cost=1.72e+6..1.72e+6 rows=3.29e+6) (actual time=5483..5483 rows=3.16e+6 loops=1)\n                            -> Group aggregate: count(distinct member_condition.Condition_ID)  (cost=1.39e+6 rows=3.29e+6) (actual time=3138..3842 rows=3.16e+6 loops=1)\n                                -> Sort: member_condition.Member_ID  (cost=928753 rows=4.58e+6) (actual time=3138..3333 rows=9.69e+6 loops=1)\n                                    -> Filter: (member_condition.Diagnostic_date <= DATE'2025-11-30')  (cost=928753 rows=4.58e+6) (actual time=0.529..1161 rows=9.69e+6 loops=1)\n                                        -> Index range scan on MEMBER_CONDITION using ix_member_condition_diagnostic_date over (Diagnostic_date <= '2025-11-30')  (cost=928753 rows=4.58e+6) (actual time=0.529..852 rows=9.69e+6 loops=1)\n                -> Index lookup on c using <auto_key0> (member_id=m.member_id)  (cost=1.61e+6..1.61e+6 rows=10) (actual time=0.00232..0.00241 rows=0.889 loops=3.15e+6)\n                    -> Materialize CTE claims_per_member  (cost=1.61e+6..1.61e+6 rows=1.42e+6) (actual time=4530..4530 rows=3.53e+6 loops=1)\n                        -> Group aggregate: count(0), sum(claims.amount)  (cost=1.47e+6 rows=1.42e+6) (actual time=1.67..2476 rows=3.53e+6 loops=1)\n                            -> Filter: ((claims.`date` >= DATE'2024-11-01') and (claims.`date` < DATE'2025-12-01'))  (cost=1.33e+6 rows=1.42e+6) (actual time=1.66..1910 rows=13.2e+6 loops=1)\n                                -> Covering index scan on CLAIMS using ix_claims_member_date_amount_hp  (cost=1.33e+6 rows=12.8e+6) (actual time=1.66..1391 rows=13.2e+6 loops=1)\n",
+  "first_read_ms": 18946.772,
+  "repeated_uncached_ms": [
+    18724.416,
+    19024.708,
+    18916.804
+  ],
+  "median_repeated_ms": 18916.804,
+  "min_repeated_ms": 18724.416,
+  "max_repeated_ms": 19024.708,
+  "returned_rows": 4,
+  "result_sha256": "603ba63a6d9d8f1c11836da187e54d5f7d37045e5b5b68e1f8f31d8f4f52d2fb",
+  "method": "Normal unhinted dashboard SELECT after making the tested covering index visible. One initial and three direct repeated reads in a read-only snapshot, plus EXPLAIN ANALYZE. Exact results match the successful covering trial and original full-data baseline. Query timing excludes metadata, HTTP, app caches, rendering, and index creation. Buffers are not flushed. Reference trial occurred earlier, so this is activation verification, not a fresh paired speedup estimate."
+}

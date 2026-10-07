@@ -24,5 +24,5 @@ SELECT
     i.insurance_name AS Insurance_Provider
 FROM health_insurance.MEMBERS m
 JOIN health_insurance.FACILITY f ON m.Primary_Care_Facility_ID = f.Facility_ID
-JOIN health_insurance.INSURANCE i ON m.`Insurance ID` = i.insurance_id
+JOIN health_insurance.INSURANCE i ON m.Insurance_ID = i.insurance_id
 LIMIT 20;

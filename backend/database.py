@@ -1,28 +1,23 @@
 import os
-import urllib.parse
+from pathlib import Path
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import create_engine, URL
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-load_dotenv()
+load_dotenv(Path(__file__).with_name('.env'))
 
-# 1. Database Credentials
-# We use urllib.parse to safely encode your password just in case it has special characters like @ or #
-db_user = os.getenv("DB_USER")
-db_password = urllib.parse.quote_plus(os.getenv("DB_PASSWORD"))
-db_host = os.getenv("DB_HOST")
-db_port = os.getenv("DB_PORT")
-db_name = os.getenv("DB_NAME")
+required = ('DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT', 'DB_NAME')
+missing = [name for name in required if not os.getenv(name)]
+if missing:
+    raise RuntimeError('Missing database settings: ' + ', '.join(missing) + '. Configure backend/.env using .env.example.')
 
-# 2. The Connection String
-SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+SQLALCHEMY_DATABASE_URL = URL.create('mysql+pymysql', username=os.environ['DB_USER'],
+    password=os.environ['DB_PASSWORD'], host=os.environ['DB_HOST'],
+    port=int(os.environ['DB_PORT']), database=os.environ['DB_NAME'])
 
-# 3. Create the Engine (The actual bridge to MySQL)
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
 
-# 4. Create a SessionLocal class (This is what will spawn individual database conversations)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# 5. Create a Base class (Our Python models will inherit from this to know they are database tables)
 Base = declarative_base()

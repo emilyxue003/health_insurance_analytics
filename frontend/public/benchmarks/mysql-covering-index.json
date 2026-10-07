@@ -1,0 +1,79 @@
+{
+  "measured_at": "2026-10-06T17:12:47.861942+00:00",
+  "mysql_version": "8.0.45",
+  "table_counts": {
+    "MEMBERS": 5000000,
+    "CLAIMS": 13179693,
+    "ENROLLMENT": 4499910,
+    "FACILITY": 10000,
+    "CONDITION": 60,
+    "INSURANCE": 8,
+    "PLAN": 40,
+    "MEMBER_CONDITION": 9710863
+  },
+  "parameters": {
+    "as_of": "2025-11-30",
+    "claims_start": "2024-11-01",
+    "claims_end": "2025-12-01",
+    "minimum_peers": 2
+  },
+  "repeats": 3,
+  "connection": "local",
+  "index_name": "ix_claims_member_date_amount_hp",
+  "index_columns": [
+    "member_id",
+    "date",
+    "amount"
+  ],
+  "index_created": true,
+  "index_build_ms": 6060.711,
+  "indexes_before": [
+    {
+      "name": "ix_claims_insurance_date",
+      "column_names": [
+        "insurance_id",
+        "date"
+      ],
+      "unique": false
+    },
+    {
+      "name": "ix_claims_member_date",
+      "column_names": [
+        "member_id",
+        "date"
+      ],
+      "unique": false
+    }
+  ],
+  "candidate_name": "conditions_covering_claims",
+  "query": "conditions_costs",
+  "result_sha256": "603ba63a6d9d8f1c11836da187e54d5f7d37045e5b5b68e1f8f31d8f4f52d2fb",
+  "results_equal": true,
+  "baseline": {
+    "sql": "WITH conditions_per_member AS (\n    SELECT Member_ID, COUNT(DISTINCT Condition_ID) AS condition_count\n    FROM MEMBER_CONDITION\n    WHERE Diagnostic_date <= :as_of\n    GROUP BY Member_ID\n), claims_per_member AS (\n    SELECT member_id, COUNT(*) AS claim_count, SUM(amount) AS claim_amount\n    FROM CLAIMS USE INDEX (`ix_claims_member_date`)\n    WHERE date >= :claims_start AND date < :claims_end\n    GROUP BY member_id\n), member_costs AS (\n    SELECT m.member_id, e.premium,\n           COALESCE(d.condition_count, 0) AS condition_count,\n           COALESCE(c.claim_count, 0) AS claim_count,\n           COALESCE(c.claim_amount, 0) AS claim_amount\n    FROM MEMBERS m\n    JOIN ENROLLMENT e ON e.Enrollment_ID = m.Enrollment_ID\n    LEFT JOIN conditions_per_member d ON d.Member_ID = m.member_id\n    LEFT JOIN claims_per_member c ON c.member_id = m.member_id\n    WHERE e.start_date <= :as_of\n      AND (e.end_date IS NULL OR e.end_date >= :as_of)\n      AND e.premium IS NOT NULL AND e.premium >= 0\n)\nSELECT CASE WHEN condition_count = 0 THEN '0'\n            WHEN condition_count = 1 THEN '1'\n            WHEN condition_count = 2 THEN '2' ELSE '3+' END AS conditions,\n       COUNT(*) AS members,\n       SUM(CASE WHEN claim_count > 0 THEN 1 ELSE 0 END) AS members_with_claims,\n       SUM(claim_count) AS claims,\n       ROUND(SUM(claim_amount), 2) AS total_claim_amount,\n       ROUND(AVG(claim_amount), 2) AS average_claim_amount,\n       ROUND(AVG(premium), 2) AS average_premium\nFROM member_costs\nGROUP BY CASE WHEN condition_count = 0 THEN '0'\n              WHEN condition_count = 1 THEN '1'\n              WHEN condition_count = 2 THEN '2' ELSE '3+' END\nORDER BY MIN(condition_count);\n",
+    "sql_sha256": "50f88d45e5a5e63e1cbfdd1ec634195e8f7e7b84396fd6c7afc0fab2450bbf28",
+    "plan": "-> Sort: `min(coalesce(d.condition_count,0))`  (actual time=38309..38309 rows=4 loops=1)\n    -> Table scan on <temporary>  (actual time=38309..38309 rows=4 loops=1)\n        -> Aggregate using temporary table  (actual time=38309..38309 rows=4 loops=1)\n            -> Nested loop left join  (cost=98e+15 rows=980e+15) (actual time=27366..36767 rows=3.15e+6 loops=1)\n                -> Nested loop left join  (cost=68.9e+9 rows=689e+9) (actual time=7842..13932 rows=3.15e+6 loops=1)\n                    -> Nested loop inner join  (cost=660698 rows=209043) (actual time=0.722..3178 rows=3.15e+6 loops=1)\n                        -> Filter: ((e.start_date <= DATE'2025-11-30') and ((e.end_date is null) or (e.end_date >= DATE'2025-11-30')) and (e.premium >= 0.00))  (cost=455195 rows=194275) (actual time=0.567..928 rows=3.15e+6 loops=1)\n                            -> Table scan on e  (cost=455195 rows=4.37e+6) (actual time=0.567..646 rows=4.5e+6 loops=1)\n                        -> Covering index lookup on m using ix_members_enrollment (Enrollment_ID=e.Enrollment_ID)  (cost=0.95 rows=1.08) (actual time=531e-6..640e-6 rows=1 loops=3.15e+6)\n                    -> Index lookup on d using <auto_key0> (Member_ID=m.member_id)  (cost=1.72e+6..1.72e+6 rows=10) (actual time=0.00328..0.00334 rows=0.632 loops=3.15e+6)\n                        -> Materialize CTE conditions_per_member  (cost=1.72e+6..1.72e+6 rows=3.29e+6) (actual time=7841..7841 rows=3.16e+6 loops=1)\n                            -> Group aggregate: count(distinct member_condition.Condition_ID)  (cost=1.39e+6 rows=3.29e+6) (actual time=5476..6183 rows=3.16e+6 loops=1)\n                                -> Sort: member_condition.Member_ID  (cost=928753 rows=4.58e+6) (actual time=5476..5671 rows=9.69e+6 loops=1)\n                                    -> Filter: (member_condition.Diagnostic_date <= DATE'2025-11-30')  (cost=928753 rows=4.58e+6) (actual time=0.936..3543 rows=9.69e+6 loops=1)\n                                        -> Index range scan on MEMBER_CONDITION using ix_member_condition_diagnostic_date over (Diagnostic_date <= '2025-11-30')  (cost=928753 rows=4.58e+6) (actual time=0.936..3234 rows=9.69e+6 loops=1)\n                -> Index lookup on c using <auto_key0> (member_id=m.member_id)  (cost=1.61e+6..1.61e+6 rows=10) (actual time=0.00708..0.00717 rows=0.889 loops=3.15e+6)\n                    -> Materialize CTE claims_per_member  (cost=1.61e+6..1.61e+6 rows=1.42e+6) (actual time=19524..19524 rows=3.53e+6 loops=1)\n                        -> Group aggregate: count(0), sum(claims.amount)  (cost=1.47e+6 rows=1.42e+6) (actual time=8.02..17267 rows=3.53e+6 loops=1)\n                            -> Filter: ((claims.`date` >= DATE'2024-11-01') and (claims.`date` < DATE'2025-12-01'))  (cost=1.33e+6 rows=1.42e+6) (actual time=8.02..16686 rows=13.2e+6 loops=1)\n                                -> Index scan on CLAIMS using ix_claims_member_date  (cost=1.33e+6 rows=12.8e+6) (actual time=8.01..16163 rows=13.2e+6 loops=1)\n",
+    "first_read_ms": 34974.879,
+    "repeated_uncached_ms": [
+      38806.274,
+      37627.67,
+      38188.566
+    ],
+    "median_repeated_ms": 38188.566
+  },
+  "candidate": {
+    "sql": "WITH conditions_per_member AS (\n    SELECT Member_ID, COUNT(DISTINCT Condition_ID) AS condition_count\n    FROM MEMBER_CONDITION\n    WHERE Diagnostic_date <= :as_of\n    GROUP BY Member_ID\n), claims_per_member AS (\n    SELECT member_id, COUNT(*) AS claim_count, SUM(amount) AS claim_amount\n    FROM CLAIMS USE INDEX (`ix_claims_member_date_amount_hp`)\n    WHERE date >= :claims_start AND date < :claims_end\n    GROUP BY member_id\n), member_costs AS (\n    SELECT m.member_id, e.premium,\n           COALESCE(d.condition_count, 0) AS condition_count,\n           COALESCE(c.claim_count, 0) AS claim_count,\n           COALESCE(c.claim_amount, 0) AS claim_amount\n    FROM MEMBERS m\n    JOIN ENROLLMENT e ON e.Enrollment_ID = m.Enrollment_ID\n    LEFT JOIN conditions_per_member d ON d.Member_ID = m.member_id\n    LEFT JOIN claims_per_member c ON c.member_id = m.member_id\n    WHERE e.start_date <= :as_of\n      AND (e.end_date IS NULL OR e.end_date >= :as_of)\n      AND e.premium IS NOT NULL AND e.premium >= 0\n)\nSELECT CASE WHEN condition_count = 0 THEN '0'\n            WHEN condition_count = 1 THEN '1'\n            WHEN condition_count = 2 THEN '2' ELSE '3+' END AS conditions,\n       COUNT(*) AS members,\n       SUM(CASE WHEN claim_count > 0 THEN 1 ELSE 0 END) AS members_with_claims,\n       SUM(claim_count) AS claims,\n       ROUND(SUM(claim_amount), 2) AS total_claim_amount,\n       ROUND(AVG(claim_amount), 2) AS average_claim_amount,\n       ROUND(AVG(premium), 2) AS average_premium\nFROM member_costs\nGROUP BY CASE WHEN condition_count = 0 THEN '0'\n              WHEN condition_count = 1 THEN '1'\n              WHEN condition_count = 2 THEN '2' ELSE '3+' END\nORDER BY MIN(condition_count);\n",
+    "sql_sha256": "249c7c16df6be0c9d3a23826b39811d8ff74896b612706b5628a9f1f5798da2f",
+    "plan": "-> Sort: `min(coalesce(d.condition_count,0))`  (actual time=23631..23631 rows=4 loops=1)\n    -> Table scan on <temporary>  (actual time=23631..23631 rows=4 loops=1)\n        -> Aggregate using temporary table  (actual time=23631..23631 rows=4 loops=1)\n            -> Nested loop left join  (cost=98e+15 rows=980e+15) (actual time=12434..22063 rows=3.15e+6 loops=1)\n                -> Nested loop left join  (cost=68.9e+9 rows=689e+9) (actual time=7752..14057 rows=3.15e+6 loops=1)\n                    -> Nested loop inner join  (cost=660701 rows=209043) (actual time=0.656..3366 rows=3.15e+6 loops=1)\n                        -> Filter: ((e.start_date <= DATE'2025-11-30') and ((e.end_date is null) or (e.end_date >= DATE'2025-11-30')) and (e.premium >= 0.00))  (cost=455197 rows=194275) (actual time=0.507..969 rows=3.15e+6 loops=1)\n                            -> Table scan on e  (cost=455197 rows=4.37e+6) (actual time=0.506..683 rows=4.5e+6 loops=1)\n                        -> Covering index lookup on m using ix_members_enrollment (Enrollment_ID=e.Enrollment_ID)  (cost=0.95 rows=1.08) (actual time=576e-6..686e-6 rows=1 loops=3.15e+6)\n                    -> Index lookup on d using <auto_key0> (Member_ID=m.member_id)  (cost=1.72e+6..1.72e+6 rows=10) (actual time=0.00327..0.00332 rows=0.632 loops=3.15e+6)\n                        -> Materialize CTE conditions_per_member  (cost=1.72e+6..1.72e+6 rows=3.29e+6) (actual time=7752..7752 rows=3.16e+6 loops=1)\n                            -> Group aggregate: count(distinct member_condition.Condition_ID)  (cost=1.39e+6 rows=3.29e+6) (actual time=5414..6115 rows=3.16e+6 loops=1)\n                                -> Sort: member_condition.Member_ID  (cost=928753 rows=4.58e+6) (actual time=5414..5608 rows=9.69e+6 loops=1)\n                                    -> Filter: (member_condition.Diagnostic_date <= DATE'2025-11-30')  (cost=928753 rows=4.58e+6) (actual time=0.891..3459 rows=9.69e+6 loops=1)\n                                        -> Index range scan on MEMBER_CONDITION using ix_member_condition_diagnostic_date over (Diagnostic_date <= '2025-11-30')  (cost=928753 rows=4.58e+6) (actual time=0.891..3152 rows=9.69e+6 loops=1)\n                -> Index lookup on c using <auto_key0> (member_id=m.member_id)  (cost=1.61e+6..1.61e+6 rows=10) (actual time=0.00238..0.00247 rows=0.889 loops=3.15e+6)\n                    -> Materialize CTE claims_per_member  (cost=1.61e+6..1.61e+6 rows=1.42e+6) (actual time=4682..4682 rows=3.53e+6 loops=1)\n                        -> Group aggregate: count(0), sum(claims.amount)  (cost=1.47e+6 rows=1.42e+6) (actual time=1.39..2636 rows=3.53e+6 loops=1)\n                            -> Filter: ((claims.`date` >= DATE'2024-11-01') and (claims.`date` < DATE'2025-12-01'))  (cost=1.33e+6 rows=1.42e+6) (actual time=1.38..2085 rows=13.2e+6 loops=1)\n                                -> Covering index scan on CLAIMS using ix_claims_member_date_amount_hp  (cost=1.33e+6 rows=12.8e+6) (actual time=1.38..1564 rows=13.2e+6 loops=1)\n",
+    "first_read_ms": 23869.04,
+    "repeated_uncached_ms": [
+      23958.469,
+      23446.298,
+      21703.814
+    ],
+    "median_repeated_ms": 23446.298
+  },
+  "speedup": 1.629,
+  "change_pct": -38.6,
+  "method": "Reference uses the existing member/date claims index; candidate uses a covering index. Both are measured after index creation in one read-only snapshot, with alternating execution order. Index construction is excluded from query timings. Invisible indexes are enabled only in this benchmark session. No dashboard query or index visibility is changed. Buffers are not flushed; one client; background load is not controlled."
+}

@@ -66,7 +66,7 @@ class MemberCondition(Base):
     __tablename__ = "MEMBER_CONDITION"
     Member_ID = Column(Integer, ForeignKey("MEMBERS.member_id"), primary_key=True)
     Condition_ID = Column(Integer, ForeignKey("CONDITION.Condition_ID"), primary_key=True)
-    Diagnostic_date = Column(Date)
+    Diagnostic_date = Column(Date, primary_key=True)
 
 class Claim(Base):
     __tablename__ = "CLAIMS"
