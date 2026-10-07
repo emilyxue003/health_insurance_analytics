@@ -55,11 +55,11 @@ After activation, the normal unhinted conditions query selected the covering ind
 
 ```mermaid
 flowchart LR
-    DB[(MySQL: eight tables)] --> API[FastAPI and SQLAlchemy]
-    API --> Local[React local dashboard]
-    DB --> Export[Reviewed aggregates and connected sample]
-    Export --> Snapshot[Versioned JSON and SQL results]
-    Snapshot --> Demo[Static React demo on Netlify]
+    DB[(MySQL: eight tables)] ==> API[FastAPI and SQLAlchemy]
+    API ==> Local[React local dashboard]
+    DB ==> Export[Reviewed aggregates and connected sample]
+    Export ==> Snapshot[Versioned JSON and SQL results]
+    Snapshot ==> Demo[Static React demo on Netlify]
 ```
 
 The full-source CSV fallback executes the analytical SELECTs in SQLite when MySQL is unavailable. Saved premium outputs were subsequently checked against full MySQL result checksums. Original generation metadata is preserved separately from MySQL verification.
